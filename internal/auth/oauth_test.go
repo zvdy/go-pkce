@@ -4,11 +4,24 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
+	"strings"
 	"testing"
 )
 
 func TestAuthorizeHandler(t *testing.T) {
-	req := httptest.NewRequest(http.MethodGet, "/authorize", nil)
+	// Prepare query parameters for a valid request.
+	params := url.Values{}
+	params.Add("client_id", "test_client")
+	params.Add("response_type", "code")
+	params.Add("state", "test_state")
+	// For test, create a dummy code challenge.
+	dummyVerifier := "test_code_verifier_which_is_long_enough_for_demo_purposes_12345678"
+	codeChallenge := GenerateCodeChallenge(dummyVerifier)
+	params.Add("code_challenge", codeChallenge)
+	params.Add("code_challenge_method", "S256")
+
+	req := httptest.NewRequest(http.MethodGet, "/authorize?"+params.Encode(), nil)
 	rr := httptest.NewRecorder()
 
 	AuthorizeHandler(rr, req)
@@ -22,14 +35,30 @@ func TestAuthorizeHandler(t *testing.T) {
 		t.Fatalf("Failed to decode JSON response: %v", err)
 	}
 
-	expectedMessage := "Authorize endpoint - implement client validation and user consent flow here"
-	if resp["message"] != expectedMessage {
-		t.Errorf("Expected message %q, got %q", expectedMessage, resp["message"])
+	// Check that the response contains a code and correct state.
+	if resp["code"] == "" {
+		t.Error("Expected an authorization code in response")
+	}
+	if resp["state"] != "test_state" {
+		t.Errorf("Expected state %q, got %q", "test_state", resp["state"])
 	}
 }
 
 func TestTokenHandler(t *testing.T) {
-	req := httptest.NewRequest(http.MethodPost, "/token", nil)
+	// Prepare a valid authorization code and store the expected code challenge.
+	codeVerifier := "test_verifier_which_is_long_enough_1234567890abcdef"
+	expectedChallenge := GenerateCodeChallenge(codeVerifier)
+	authCode := "test_auth_code_token"
+	authCodes[authCode] = expectedChallenge
+
+	// Prepare form data.
+	form := url.Values{}
+	form.Add("grant_type", "authorization_code")
+	form.Add("code", authCode)
+	form.Add("code_verifier", codeVerifier)
+
+	req := httptest.NewRequest(http.MethodPost, "/token", strings.NewReader(form.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	rr := httptest.NewRecorder()
 
 	TokenHandler(rr, req)
