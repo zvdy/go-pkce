@@ -36,3 +36,5 @@
    - The server validates the refresh token and issues a new access token.
 
 > This flow ensures that even if an attacker intercepts the authorization code, they cannot exchange it for a valid access token without also possessing the original code_verifier.
+
+![img](https://images.ctfassets.net/cdy7uua7fh8z/3pstjSYx3YNSiJQnwKZvm5/33c941faf2e0c434a9ab1f0f3a06e13a/auth-sequence-auth-code-pkce.png)
